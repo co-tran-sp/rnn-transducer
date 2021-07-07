@@ -4,8 +4,8 @@ import numpy as np
 import itertools
 from collections import Counter
 from tqdm import tqdm
-!pip install unidecode
 import unidecode
+from speechbrain.nnet.loss.transducer_loss import TransducerLoss
 
 
 class Encoder(torch.nn.Module):
@@ -146,15 +146,15 @@ def compute_single_alignment_prob(self, encoder_out, predictor_out, T, U, z, y):
     logprob = -torch.nn.functional.nll_loss(input=joiner_out, target=torch.tensor(y_expanded).long().to(self.device), reduction="sum")
     return logprob
 
-if __name__ == "__main__":
-    NULL_INDEX = 0
 
-    encoder_dim = 1024
-    predictor_dim = 1024
-    joiner_dim = 1024
-    
-    !wget https://raw.githubusercontent.com/lorenlugosch/infer_missing_vowels/master/data/train/war_and_peace.txt
-    !pwd
 
-    Transducer.compute_single_alignment_prob = compute_single_alignment_prob
+def compute_loss(self, x, y, T, U):
+    encoder_out = self.encoder.forward(x)
+    predictor_out = self.predictor.forward(y)
+    joiner_out = self.joiner.forward(encoder_out.unsqueeze(2), predictor_out.unsqueeze(1)).log_softmax(3)
+    #loss = -self.compute_forward_prob(joiner_out, T, U, y).mean()
+    T = T.to(joiner_out.device)
+    U = U.to(joiner_out.device)
+    loss = transducer_loss(joiner_out, y, T, U) #, blank_index=NULL_INDEX, reduction="mean")
+    return loss
 
